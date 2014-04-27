@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project( DisplayImage )
+project( depth )
 find_package( OpenCV REQUIRED )
 file( GLOB depth_SRC
       "src/*.h"
