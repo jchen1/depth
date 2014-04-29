@@ -300,7 +300,7 @@ StereoCalib(vector<Mat> imagelist, Size boardSize, bool useCalibrated=true, bool
 }
 
 static bool
-testCalib(Mat left, Mat right, Size boardSize, bool useCalibrated=true)
+testCalib(Mat left, Mat right, Size boardSize)
 {
     bool displayCorners = false;
     const int maxScale = 2;
@@ -387,6 +387,34 @@ testCalib(Mat left, Mat right, Size boardSize, bool useCalibrated=true)
     }
     npoints += npt;
     cout << "average reprojection err = " <<  err/npoints << endl;
+
+    // save intrinsic parameters
+    FileStorage fs("intrinsics.yml", FileStorage::WRITE);
+    if( fs.isOpened() )
+    {
+        fs << "M1" << cameraMatrix[0] << "D1" << distCoeffs[0] <<
+            "M2" << cameraMatrix[1] << "D2" << distCoeffs[1];
+        fs.release();
+    }
+    else
+        cout << "Error: can not save the intrinsic parameters\n";
+
+    Mat R1, R2, P1, P2, Q;
+    Rect validRoi[2];
+
+    stereoRectify(cameraMatrix[0], distCoeffs[0],
+                  cameraMatrix[1], distCoeffs[1],
+                  imageSize, R, T, R1, R2, P1, P2, Q,
+                  CALIB_ZERO_DISPARITY, 1, imageSize, &validRoi[0], &validRoi[1]);
+
+    fs.open("extrinsics.yml", FileStorage::WRITE);
+    if( fs.isOpened() )
+    {
+        fs << "R" << R << "T" << T << "R1" << R1 << "R2" << R2 << "P1" << P1 << "P2" << P2 << "Q" << Q;
+        fs.release();
+    }
+    else
+        cout << "Error: can not save the intrinsic parameters\n";
     
 
    return true;
@@ -414,7 +442,7 @@ int main(int argc, char** argv)
         switch ((char)waitKey(1)) {
             case 'p':
                 // capture image, test if viable, if viable then add to vector
-                if (testCalib(mat_left, mat_right, boardSize, true)) {
+                if (testCalib(mat_left, mat_right, boardSize)) {
                     images.push_back(mat_left.clone());
                     images.push_back(mat_right.clone());
                     cout << "Added images, " << images.size() << " total." << endl;
