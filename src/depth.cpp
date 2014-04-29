@@ -15,7 +15,10 @@
 #define MAX_DISPARITY (((WIDTH / 8) + 15) & -16)   // Must be multiple of 16
 #define SCALE 1
 
-int main()
+static inline int load_camera_config(cv::Mat& map11,
+    cv::Mat& map12,
+    cv::Mat& map21,
+    cv::Mat& map22)
 {
     static const std::string intrinsic_filename = "intrinsics.yml";
     static const std::string extrinsic_filename = "extrinsics.yml";
@@ -53,9 +56,15 @@ int main()
     cv::Size img_size(WIDTH, HEIGHT);
     stereoRectify(M1, D1, M2, D2, img_size, R, T, R1, R2, P1, P2, Q, cv::CALIB_ZERO_DISPARITY, -1, img_size, &roi1, &roi2);
 
-    cv::Mat map11, map12, map21, map22;
     initUndistortRectifyMap(M1, D1, R1, P1, img_size, CV_16SC2, map11, map12);
     initUndistortRectifyMap(M2, D2, R2, P2, img_size, CV_16SC2, map21, map22);
+}
+
+int main()
+{
+    cv::Mat map11, map12, map21, map22;
+    if (load_camera_config(map11, map12, map21, map22) == -1)
+        return -1;
 
     cv::VideoCapture cap0(1);
     cv::VideoCapture cap1(2);
@@ -86,7 +95,7 @@ int main()
 
     for (;;)
     {
-        cv::Mat src0, src1, disp;
+        cv::Mat src0, src1, disp, disp8;
         cap0 >> src0;
         cap1 >> src1;
 
@@ -99,9 +108,11 @@ int main()
 
         sgbm(src0, src1, disp);
 
+        disp.convertTo(disp8, CV_8U, 255 / (MAX_DISPARITY*16.));
+
         imshow("cam0", src0);
         imshow("cam1", src1);
-        imshow("disp", disp);
+        imshow("disp", disp8);
 
         if (cv::waitKey(30) >= 0)
         {
