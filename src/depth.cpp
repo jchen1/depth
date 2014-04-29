@@ -38,6 +38,9 @@
 using namespace cv;
 using namespace std;
 
+#define CHECKERBOARD_WIDTH 7
+#define CHECKERBOARD_HEIGHT 7
+
 static void
 StereoCalib(vector<Mat> imagelist, Size boardSize, bool useCalibrated=true, bool showRectified=true)
 {
@@ -305,7 +308,7 @@ testCalib(Mat left, Mat right, Size boardSize, bool useCalibrated=true)
     // ARRAY AND VECTOR STORAGE:
 
     vector<vector<Point2f>> imagePoints[2];
-    vector<vector<Point3f>> objectPoints;
+    vector<vector<Point3f>> objectPoints(1);
     Size imageSize;
 
     int i, j, k, nimages = 1;
@@ -316,7 +319,7 @@ testCalib(Mat left, Mat right, Size boardSize, bool useCalibrated=true)
 
     bool foundLeft = false, foundRight = false;
     vector<Point2f>& cornersLeft = imagePoints[0][0];
-    vector<Point2f>& cornersRight = imagePoints[0][1];
+    vector<Point2f>& cornersRight = imagePoints[1][0];
 
     foundLeft = findChessboardCorners(left, boardSize, cornersLeft,
         CALIB_CB_NORMALIZE_IMAGE | CALIB_CB_ADAPTIVE_THRESH);
@@ -348,7 +351,7 @@ testCalib(Mat left, Mat right, Size boardSize, bool useCalibrated=true)
     double rms = stereoCalibrate(objectPoints, imagePoints[0], imagePoints[1],
                     cameraMatrix[0], distCoeffs[0],
                     cameraMatrix[1], distCoeffs[1],
-                    imageSize, R, T, E, F,
+                    left.size(), R, T, E, F,
                     TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 100, 1e-5),
                     CALIB_FIX_ASPECT_RATIO +
                     CALIB_ZERO_TANGENT_DIST +
@@ -393,7 +396,7 @@ testCalib(Mat left, Mat right, Size boardSize, bool useCalibrated=true)
 int main(int argc, char** argv)
 {
     cv::Mat mat_left, mat_right;
-    cv::VideoCapture cap_left(0), cap_right(1); // change this
+    cv::VideoCapture cap_left(1), cap_right(2); // change this
 
     if (!cap_left.isOpened() || !cap_right.isOpened()) {
         cerr << "couldn't open cameras" << endl;
@@ -401,11 +404,13 @@ int main(int argc, char** argv)
     }
 
     vector<Mat> images;
-    Size boardSize(9, 6);
+    Size boardSize(CHECKERBOARD_WIDTH, CHECKERBOARD_HEIGHT);
 
     while (true) {
         cap_left >> mat_left;
         cap_right >> mat_right;
+        cv::cvtColor(mat_left, mat_left, CV_BGR2GRAY);
+        cv::cvtColor(mat_right, mat_right, CV_BGR2GRAY);
         switch ((char)waitKey(1)) {
             case 'p':
                 // capture image, test if viable, if viable then add to vector
@@ -414,14 +419,18 @@ int main(int argc, char** argv)
                     images.push_back(mat_right.clone());
                     cout << "Added images, " << images.size() << " total." << endl;
                 }
+                break;
             case 'c':
                 images.clear();
                 cout << "Cleared images";
+                break;
             case 'g':
-                // StereoCalib(images, boardSize, true, false);
+                StereoCalib(images, boardSize, true, false);
+                break;
             case 'q':
                 // quit
                 return 0;
+                break;
         }
         imshow("left", mat_left);
         imshow("right", mat_right);
