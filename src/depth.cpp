@@ -38,8 +38,8 @@
 using namespace cv;
 using namespace std;
 
-#define CHECKERBOARD_WIDTH 7
-#define CHECKERBOARD_HEIGHT 7
+#define CHECKERBOARD_WIDTH 9
+#define CHECKERBOARD_HEIGHT 6
 
 static void
 StereoCalib(vector<Mat> imagelist, Size boardSize, bool useCalibrated=true, bool showRectified=true)
@@ -437,12 +437,14 @@ int main(int argc, char** argv)
     while (true) {
         cap_left >> mat_left;
         cap_right >> mat_right;
+        if (mat_left.channels() != 3 || mat_right.channels() != 3)
+            continue;
         cv::cvtColor(mat_left, mat_left, CV_BGR2GRAY);
         cv::cvtColor(mat_right, mat_right, CV_BGR2GRAY);
         switch ((char)waitKey(1)) {
             case 'p':
                 // capture image, test if viable, if viable then add to vector
-                if (testCalib(mat_left, mat_right, boardSize)) {
+                if (testCalib(mat_left.clone(), mat_right.clone(), boardSize)) {
                     images.push_back(mat_left.clone());
                     images.push_back(mat_right.clone());
                     cout << "Added images, " << images.size() << " total." << endl;
@@ -453,7 +455,7 @@ int main(int argc, char** argv)
                 cout << "Cleared images";
                 break;
             case 'g':
-                StereoCalib(images, boardSize, true, false);
+                StereoCalib(images, boardSize, true, true);
                 break;
             case 'q':
                 // quit
