@@ -27,7 +27,7 @@ static inline int load_camera_config(cv::Mat& map11,
     cv::FileStorage fs(intrinsic_filename, CV_STORAGE_READ);
     if (!fs.isOpened())
     {
-        printf("Failed to open file %s\n", intrinsic_filename);
+        printf("Failed to open file %s\n", intrinsic_filename.c_str());
         return -1;
     }
 
@@ -43,7 +43,7 @@ static inline int load_camera_config(cv::Mat& map11,
     fs.open(extrinsic_filename, CV_STORAGE_READ);
     if (!fs.isOpened())
     {
-        printf("Failed to open file %s\n", extrinsic_filename);
+        printf("Failed to open file %s\n", extrinsic_filename.c_str());
         return -1;
     }
 
@@ -58,7 +58,10 @@ static inline int load_camera_config(cv::Mat& map11,
 
     initUndistortRectifyMap(M1, D1, R1, P1, img_size, CV_16SC2, map11, map12);
     initUndistortRectifyMap(M2, D2, R2, P2, img_size, CV_16SC2, map21, map22);
+
+    return 0;
 }
+
 
 int main()
 {
@@ -93,9 +96,22 @@ int main()
     sgbm.disp12MaxDiff = 1;
     sgbm.fullDP = 0;
 
+    int blockSize = BLOCK_SIZE / 2;
+    int numDisparities = MAX_DISPARITY / 16;
+
+    cv::namedWindow("disp");
+    cv::createTrackbar("Block Size", "disp", &blockSize, 16);
+    cv::createTrackbar("Speckle Range", "disp", &sgbm.speckleRange, 100);
+    cv::createTrackbar("Prefilter Cap", "disp", &sgbm.preFilterCap, 255);
+    cv::createTrackbar("Uniqueness Ratio", "disp", &sgbm.uniquenessRatio, 100);
+    cv::createTrackbar("Speckle Size", "disp", &sgbm.speckleWindowSize, 255);
+    cv::createTrackbar("Minimum Disparity", "disp", &sgbm.minDisparity, 100);
+    cv::createTrackbar("Disparity Number", "disp", &numDisparities, 64);
+
     for (;;)
     {
         cv::Mat src0, src1, disp, disp8;
+
         cap0 >> src0;
         cap1 >> src1;
 
@@ -108,6 +124,9 @@ int main()
 
         src0 = img1r;
         src1 = img2r;
+
+        sgbm.SADWindowSize = blockSize *2+1;
+        sgbm.numberOfDisparities = numDisparities * 16;
 
         sgbm(src0, src1, disp);
 
