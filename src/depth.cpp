@@ -99,6 +99,9 @@ int main()
         cap0 >> src0;
         cap1 >> src1;
 
+        if (src0.channels() != 3 || src1.channels() != 3)
+            continue;
+
         cv::Mat img1r, img2r;
         remap(src0, img1r, map11, map12, cv::INTER_LINEAR);
         remap(src1, img2r, map21, map22, cv::INTER_LINEAR);
