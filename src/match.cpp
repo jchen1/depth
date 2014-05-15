@@ -15,6 +15,12 @@
 #define MAX_DISPARITY (((WIDTH / 8) + 15) & -16)   // Must be multiple of 16
 #define SCALE 1
 
+// Start from 0 and count up. Each webcam has a unique id.
+// Find these by trial and error.
+// NOTE: Must be configured for target machine.
+#define LEFT_CAM 2
+#define RIGHT_CAM 1
+
 static inline int load_camera_config(cv::Mat& map11,
     cv::Mat& map12,
     cv::Mat& map21,
@@ -69,18 +75,17 @@ int main()
     if (load_camera_config(map11, map12, map21, map22) == -1)
         return -1;
 
-    cv::VideoCapture cap0(1);
-    cv::VideoCapture cap1(2);
-    if (!cap0.isOpened() || !cap1.isOpened())
+    cv::VideoCapture left_cam(LEFT_CAM), right_cam(RIGHT_CAM);
+    if (!left_cam.isOpened() || !right_cam.isOpened())
     {
         std::cerr << "Webcam could not be opened." << std::endl;
         return -1;
     }
 
-    cap0.set(CV_CAP_PROP_FRAME_WIDTH, WIDTH);
-    cap0.set(CV_CAP_PROP_FRAME_HEIGHT, HEIGHT);
-    cap1.set(CV_CAP_PROP_FRAME_WIDTH, WIDTH);
-    cap1.set(CV_CAP_PROP_FRAME_HEIGHT, HEIGHT);
+    left_cam.set(CV_CAP_PROP_FRAME_WIDTH, WIDTH * SCALE);
+    left_cam.set(CV_CAP_PROP_FRAME_HEIGHT, HEIGHT * SCALE);
+    right_cam.set(CV_CAP_PROP_FRAME_WIDTH, WIDTH * SCALE);
+    right_cam.set(CV_CAP_PROP_FRAME_HEIGHT, HEIGHT * SCALE);
 
     cv::StereoSGBM sgbm;
 
@@ -99,42 +104,38 @@ int main()
     int blockSize = BLOCK_SIZE / 2;
     int numDisparities = MAX_DISPARITY / 16;
 
-    cv::namedWindow("disp");
-    cv::createTrackbar("Block Size", "disp", &blockSize, 16);
-    cv::createTrackbar("Speckle Range", "disp", &sgbm.speckleRange, 100);
-    cv::createTrackbar("Prefilter Cap", "disp", &sgbm.preFilterCap, 255);
-    cv::createTrackbar("Uniqueness Ratio", "disp", &sgbm.uniquenessRatio, 100);
-    cv::createTrackbar("Speckle Size", "disp", &sgbm.speckleWindowSize, 255);
-    cv::createTrackbar("Minimum Disparity", "disp", &sgbm.minDisparity, 100);
-    cv::createTrackbar("Disparity Number", "disp", &numDisparities, 64);
+    cv::namedWindow("controls");
+    cv::createTrackbar("Block Size", "controls", &blockSize, 16);
+    cv::createTrackbar("Speckle Range", "controls", &sgbm.speckleRange, 100);
+    cv::createTrackbar("Prefilter Cap", "controls", &sgbm.preFilterCap, 255);
+    cv::createTrackbar("Uniqueness Ratio", "controls", &sgbm.uniquenessRatio, 100);
+    cv::createTrackbar("Speckle Size", "controls", &sgbm.speckleWindowSize, 255);
+    cv::createTrackbar("Minimum Disparity", "controls", &sgbm.minDisparity, 100);
+    cv::createTrackbar("Disparity Number", "controls", &numDisparities, 64);
 
     for (;;)
     {
-        cv::Mat src0, src1, disp, disp8;
+        cv::Mat left_raw, right_raw, left_corrected, right_corrected, disp, disp8;
 
-        cap0 >> src0;
-        cap1 >> src1;
+        left_cam >> left_raw;
+        right_cam >> right_raw;
 
-        if (src0.channels() != 3 || src1.channels() != 3)
+        if (left_raw.channels() != 3 || right_raw.channels() != 3)
             continue;
 
-        cv::Mat img1r, img2r;
-        remap(src0, img1r, map11, map12, cv::INTER_LINEAR);
-        remap(src1, img2r, map21, map22, cv::INTER_LINEAR);
-
-        src0 = img1r;
-        src1 = img2r;
+        remap(left_raw, left_corrected, map11, map12, cv::INTER_LINEAR);
+        remap(right_raw, right_corrected, map21, map22, cv::INTER_LINEAR);
 
         sgbm.SADWindowSize = blockSize *2+1;
         sgbm.numberOfDisparities = numDisparities * 16;
 
-        sgbm(src0, src1, disp);
+        sgbm(left_corrected, right_corrected, disp);
 
         disp.convertTo(disp8, CV_8U, 255 / (MAX_DISPARITY*16.));
 
-        imshow("cam0", src0);
-        imshow("cam1", src1);
-        imshow("disp", disp8);
+        imshow("Left Eye", left_corrected);
+        imshow("Right Eye", right_corrected);
+        imshow("Disparity", disp8);
 
         if (cv::waitKey(30) >= 0)
         {
