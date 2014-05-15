@@ -17,6 +17,12 @@ using namespace std;
 #define CHECKERBOARD_WIDTH 9
 #define CHECKERBOARD_HEIGHT 6
 
+// Start from 0 and count up. Each webcam has a unique id.
+// Find these by trial and error.
+// NOTE: Must be configured for target machine.
+#define LEFT_CAM 2
+#define RIGHT_CAM 1
+
 static bool
 calibrate(Mat left, Mat right, Size boardSize)
 {
@@ -142,7 +148,7 @@ calibrate(Mat left, Mat right, Size boardSize)
 int main(int argc, char** argv)
 {
     cv::Mat mat_left, mat_right;
-    cv::VideoCapture cap_left(1), cap_right(2); // change this
+    cv::VideoCapture cap_left(LEFT_CAM), cap_right(RIGHT_CAM);
 
     if (!cap_left.isOpened() || !cap_right.isOpened()) {
         cerr << "couldn't open cameras" << endl;
@@ -161,7 +167,6 @@ int main(int argc, char** argv)
         cv::cvtColor(mat_right, mat_right, CV_BGR2GRAY);
         switch ((char)waitKey(1)) {
             case 'p':
-                // capture image, test if viable, if viable then add to vector
                 if (calibrate(mat_left.clone(), mat_right.clone(), boardSize)) {
                     cout << "Saved extrinsics and intrinsics." << endl;
                 }
